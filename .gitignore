@@ -8,3 +8,7 @@
 # Ignore all venv directories
 venv/
 **/venv/
+.gitignore
+.git
+.idea
+
