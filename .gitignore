@@ -1,0 +1,10 @@
+# Ignore all .db files
+*.db
+
+# Ignore all .terraform directories
+.terraform/
+**/.terraform/
+
+# Ignore all venv directories
+venv/
+**/venv/

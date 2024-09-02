@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Dynamic To-Do List App</title>
+    <link href="static/css/bulma.min.css" rel="stylesheet">
+    <link href="static/css/style.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+<section class="section">
+    <div class="container">
+        <h1 class="title has-text-centered"
+            style="color: #ffffff; margin-bottom: 30px; font-size: 2.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+            Simple To-Do list APP</h1>
+
+        <div class="field is-grouped">
+            <div class="control is-expanded">
+                <div class="input-container">
+                    <input id="taskInput" required type="text">
+                    <label for="taskInput">Enter a new task</label>
+                </div>
+            </div>
+            <div class="control">
+                <div class="input-container">
+                    <input id="taskDate" required type="date">
+                </div>
+            </div>
+            <div class="control">
+                <button class="add-button" id="btn-add-task" onclick="addTask()">Add Task</button>
+            </div>
+        </div>
+
+
+        <div class="columns is-desktop">
+            <div class="column">
+                <h2 class="column-title">To Do</h2>
+                <div class="task-list" id="todo"></div>
+            </div>
+            <div class="column">
+                <h2 class="column-title">Doing</h2>
+                <div class="task-list" id="doing"></div>
+            </div>
+            <div class="column">
+                <h2 class="column-title">Finished</h2>
+                <div class="task-list" id="finished"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="static/js/main.js" defer></script>
+<!-- Footer with Copyright Notice -->
+<footer>
+    <p>&copy; 2024 POOLA. All rights reserved.</p>
+</footer>
+</body>
+
+</html>
