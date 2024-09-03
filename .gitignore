@@ -4,7 +4,7 @@
 # Ignore all .terraform directories
 .terraform/
 **/.terraform/
-
+.terraform*
 # Ignore all venv directories
 venv/
 **/venv/

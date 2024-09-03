@@ -17,3 +17,12 @@ output "jenkins_public_ip" {
   description = "Public IP of Jenkins server"
   value       = aws_instance.jenkins.public_ip
 }
+
+# Output the repository URLs
+output "frontend_repository_url" {
+  value = aws_ecr_repository.frontend_repo.repository_url
+}
+
+output "backend_repository_url" {
+  value = aws_ecr_repository.backend_repo.repository_url
+}
