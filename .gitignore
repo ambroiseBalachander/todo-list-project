@@ -1,0 +1,14 @@
+# Ignore all .db files
+*.db
+
+# Ignore all .terraform directories
+.terraform/
+**/.terraform/
+.terraform*
+# Ignore all venv directories
+venv/
+**/venv/
+.gitignore
+.git
+.idea
+

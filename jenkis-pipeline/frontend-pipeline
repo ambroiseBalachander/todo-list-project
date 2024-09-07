@@ -1,0 +1,105 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'eu-west-3' // Change this to your desired region
+        ECR_REPO_NAME = 'frontend-repository' // Change this to your ECR repository name
+        IMAGE_TAG = "latest" // Tag the image with the Jenkins build number
+        AWS_ACCOUNT_ID = credentials('ACCOUNT_ID') // Jenkins credentials ID containing AWS account ID
+        DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
+        SONARQUBE_SERVER = 'sonar_server' // SonarQube server name configured in Jenkins
+        SONARQUBE_PROJECT_KEY = 'frontend-todolist' // SonarQube project key
+        GIT_CREDENTIALS_ID = 'GITHUB'
+        REPO_URL = 'https://github.com/ambroiseBalachander/todo-list-project.git'
+    }
+
+    stages {
+        stage('Cleanup Workspace') {
+            steps {
+                script {
+                    // Clear the workspace to ensure a clean build
+                    deleteDir()
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: "${REPO_URL}",
+                    credentialsId: "${GIT_CREDENTIALS_ID}"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('frontend-todolist') {
+                    script {
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh '''
+                            . /etc/environment
+                            sonar-scanner -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} -Dsonar.sources=. -Dsonar.python.pylint.reportPath=./pylint_report.json
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Trivy File Scan') {
+            steps {
+                dir('frontend-todolist') {
+                    script {
+                        sh '''
+                        trivy fs . --exit-code 0 --severity HIGH,CRITICAL
+                        '''
+                    }
+                }
+            }q
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('frontend-todolist') {
+                    script {
+                        // Build the Docker image
+                        sh "docker build -t ${DOCKER_IMAGE} ."
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                script {
+                    // Scan the Docker image for vulnerabilities
+                    sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
+                }
+            }
+        }
+
+        stage('Push Docker Image to ECR') {
+            steps {
+                script {
+                    // Push the Docker image to ECR
+                    sh "docker push ${DOCKER_IMAGE}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Docker image has been successfully built, scanned, and pushed to ECR.'
+        }
+        failure {
+            echo 'There was an error during the Docker build, scan, or push process.'
+        }
+        always {
+            // Clean up workspace
+            cleanWs()
+            // Archive artifacts (optional)
+            archiveArtifacts artifacts: '**/dependency-check-report/*, **/trivy-report/*, **/sonarqube-out/*', allowEmptyArchive: true
+        }
+    }
+}

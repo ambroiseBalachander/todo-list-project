@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    environment {
+        ECR_REPOSITORY = 'backend-repository' // Your ECR repository name
+        IMAGE_NAME = "${ECR_REPOSITORY}:latest"
+        AWS_REGION = 'eu-west-3' // Your AWS region
+        SONARQUBE_SERVER = 'sonar_server' // SonarQube server name configured in Jenkins
+        SONARQUBE_PROJECT_KEY = 'backend-todolist' // SonarQube project key
+        GIT_CREDENTIALS_ID = "GITHUB"
+        REPO_URL = "https://github.com/ambroiseBalachander/todo-list-project.git"
+        AWS_ACCOUNT_ID = credentials('ACCOUNT_ID') // Jenkins credentials ID containing AWS account ID
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: "main",
+                    url: "${REPO_URL}",
+                    credentialsId: "${GIT_CREDENTIALS_ID}"
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('backend-todolist') {
+                    sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    '''
+                }
+            }
+        }
+
+        stage('Trivy File Scan') {
+            steps {
+                dir('backend-todolist') {
+                    sh '''
+                    . venv/bin/activate
+                    trivy fs . --exit-code 0 --severity HIGH,CRITICAL
+                    '''
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir('backend-todolist') {
+                    script {
+                        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                            sh '''
+                           . venv/bin/activate
+                           . /etc/environment
+                            sonar-scanner -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} -Dsonar.sources=. -Dsonar.python.pylint.reportPath=./pylint_report.json
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('backend-todolist') {
+                    script {
+                        sh 'docker build -t ${IMAGE_NAME} .'
+                    }
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    sh '''
+                    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    docker tag ${IMAGE_NAME} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
+                    docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                script {
+                    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:latest'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+            archiveArtifacts artifacts: '**/dependency-check-report/*, **/trivy-report/*, **/sonarqube-out/*', allowEmptyArchive: true
+        }
+    }
+}

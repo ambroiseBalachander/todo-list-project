@@ -1,0 +1,6 @@
+# Ignore Docker-related files
+Dockerfile
+.dockerignore
+
+# Ignore nginx.conf file in the static content directory
+nginx.conf
